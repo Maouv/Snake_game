@@ -247,7 +247,7 @@ canvas{display:block;image-rendering:pixelated;}
 // ── JSONBin Config ─────────────────────────────────────────────
 const JSONBIN_KEY = "$2a$10$SrLmW.SDBlsn5cLzpKxTFOwe0.2yPyHp9bPQI/1li8es6MQZxjKTm";
 const JSONBIN_BIN = "6993f80dae596e708f30c4f4";
-const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`;
+const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6993f80dae596e708f30c4f4";
 
 // ── Seismic gem image ──────────────────────────────────────────
 const SEISMIC_IMG = new Image();
@@ -274,11 +274,20 @@ const lenEl   = document.getElementById('len-val');
 // ── JSONBin Leaderboard ────────────────────────────────────────
 async function fetchLB() {
   const res = await fetch(JSONBIN_URL + '/latest', {
-    headers: { 'X-Master-Key': JSONBIN_KEY }
+    method: 'GET',
+    headers: {
+      'X-Master-Key': JSONBIN_KEY,
+      'X-Bin-Meta': 'false'
+    }
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error('HTTP ' + res.status + ' — ' + txt);
+  }
   const data = await res.json();
-  return data.record.leaderboard || [];
+  // JSONBin v3 returns { record: {...} } or just the object directly
+  const record = data.record !== undefined ? data.record : data;
+  return record.leaderboard || [];
 }
 
 async function saveLB(entries) {
@@ -286,11 +295,15 @@ async function saveLB(entries) {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'X-Master-Key': JSONBIN_KEY
+      'X-Master-Key': JSONBIN_KEY,
+      'X-Bin-Meta': 'false'
     },
     body: JSON.stringify({ leaderboard: entries })
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error('HTTP ' + res.status + ' — ' + txt);
+  }
 }
 
 async function loadLeaderboard() {
@@ -318,7 +331,7 @@ async function loadLeaderboard() {
       </div>`;
     }).join('');
   } catch(e) {
-    list.innerHTML = `<div class="lb-err">❌ Gagal memuat leaderboard.<br>Cek koneksi internet.</div>`;
+    list.innerHTML = `<div class="lb-err">❌ Gagal memuat leaderboard.<br><small style='font-size:0.28rem;word-break:break-all'>${e.message}</small></div>`;
     console.error(e);
   }
 }
